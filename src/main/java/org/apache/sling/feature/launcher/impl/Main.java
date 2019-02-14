@@ -85,8 +85,9 @@ public class Main {
         final Option varValue = new Option("V", true, "Set variable value");
         final Option debugOption = new Option("v", false, "Verbose");
         debugOption.setArgs(0);
-        final Option cacheOption = new Option("c", true, "Set cache dir");
+        final Option cacheOption = new Option("cache", true, "Set cache dir");
         final Option homeOption = new Option("p", true, "Set home dir");
+        final Option cleanOption = new Option("c", "clean", false, "Clean start");
 
         final Option frameworkOption = new Option("fv", true, "Set felix framework version");
 
@@ -99,6 +100,7 @@ public class Main {
         options.addOption(cacheOption);
         options.addOption(homeOption);
         options.addOption(frameworkOption);
+        options.addOption(cleanOption);
 
         final CommandLineParser clp = new BasicParser();
         try {
@@ -145,6 +147,9 @@ public class Main {
             if (cl.hasOption(frameworkOption.getOpt())) {
                 m_frameworkVersion = cl.getOptionValue(frameworkOption.getOpt());
             }
+            if (cl.hasOption(cleanOption.getOpt()) || cl.hasOption(cleanOption.getLongOpt())) {
+            	config.setClean(true);
+            }
         } catch ( final ParseException pe) {
             Main.LOG().error("Unable to parse command line: {}", pe.getMessage(), pe);
 
@@ -168,7 +173,7 @@ public class Main {
                 null, null);
     }
 
-    public static void main(final String[] args) {
+    public static void main(final String[] args) throws IOException {
         // setup logging
         System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "info");
         System.setProperty("org.slf4j.simpleLogger.showThreadName", "false");
@@ -201,6 +206,13 @@ public class Main {
         // move storage inside launcher
         if ( installation.getFrameworkProperties().get(STORAGE_PROPERTY) == null ) {
             installation.getFrameworkProperties().put(STORAGE_PROPERTY, launcherConfig.getHomeDirectory().getAbsolutePath() + File.separatorChar + "framework");
+        }
+        if (launcherConfig.isClean()) {
+        	final File storage = new File(installation.getFrameworkProperties().get(STORAGE_PROPERTY));
+        	if (storage.exists()) {
+        		if (!cleanRecursively(storage))
+        			throw new IOException("Clean start failed, could not clean up storage directory.");
+        	}
         }
         // set start level to 30
         if ( installation.getFrameworkProperties().get(START_LEVEL_PROP) == null ) {
@@ -428,4 +440,15 @@ public class Main {
 
         return cl;
     }
+    
+    private static boolean cleanRecursively(final File file) {
+    	if (file.isDirectory()) {
+    		for (File f : file.listFiles()) {
+    			if (!cleanRecursively(f))
+    				return false;
+    		}
+    	}
+    	return file.delete();
+    }
+    
 }

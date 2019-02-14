@@ -19,8 +19,11 @@ package org.apache.sling.feature.launcher.impl;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +40,7 @@ import org.apache.sling.feature.ExtensionType;
 import org.apache.sling.feature.Feature;
 import org.apache.sling.feature.builder.BuilderContext;
 import org.apache.sling.feature.builder.FeatureBuilder;
+import org.apache.sling.feature.builder.FeatureProvider;
 import org.apache.sling.feature.builder.MergeHandler;
 import org.apache.sling.feature.builder.PostProcessHandler;
 import org.apache.sling.feature.io.file.ArtifactHandler;
@@ -58,18 +62,30 @@ public class FeatureProcessor {
     public static Feature createApplication(final LauncherConfig config,
             final ArtifactManager artifactManager) throws IOException
     {
-        final BuilderContext builderContext = new BuilderContext(id -> {
-            try {
-                final ArtifactHandler handler = artifactManager.getArtifactHandler(id.toMvnUrl());
-                try (final FileReader r = new FileReader(handler.getFile())) {
-                    final Feature f = FeatureJSONReader.read(r, handler.getUrl());
-                    return f;
-                }
-            } catch (IOException e) {
-                // ignore
-                return null;
-            }
-        });
+        final BuilderContext builderContext = new BuilderContext(new FeatureProvider() {
+			
+			@Override
+			public Feature provide(ArtifactId id) {
+				try {
+	                final ArtifactHandler handler = artifactManager.getArtifactHandler(id.toMvnUrl());
+	                try (final FileReader r = new FileReader(handler.getFile())) {
+	                    final Feature f = FeatureJSONReader.read(r, handler.getUrl());
+	                    return f;
+	                }
+	            } catch (IOException e) {
+	                // ignore
+	                return null;
+	            }
+			}
+			
+			@Override
+			public Feature read(URL url) throws IOException {
+        		 try (final Reader reader = new InputStreamReader(url.openStream(), StandardCharsets.UTF_8)) {
+        			 return FeatureJSONReader.read(reader, url.toString());
+        		 }
+			}
+			
+		});
         builderContext.setArtifactProvider(id -> {
             try {
                 final ArtifactHandler handler = artifactManager.getArtifactHandler(id.toMvnUrl());

@@ -48,6 +48,8 @@ public class LauncherConfig
     private volatile File home = new File(HOME);
 
     private final Map<String,String> variables = new HashMap<>();
+    
+    private volatile boolean clean = false;
 
     /**
      * Create a new configuration object.
@@ -103,4 +105,13 @@ public class LauncherConfig
     public Map<String,String> getVariables() {
         return this.variables;
     }
+    
+    public boolean isClean() {
+		return clean;
+	}
+    
+    public void setClean(boolean clean) {
+		this.clean = clean;
+	}
+    
 }
